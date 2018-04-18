@@ -11,7 +11,9 @@ import java.net.Socket;
  */
 public class ClientManager implements Runnable{
 
-	//object of type node on which this thread runs
+	/*
+	 *Object of type of Node on which this clientManager thread runs 
+	 */
 	Node thisNode;
 
 	public ClientManager(Node t) {
@@ -30,7 +32,7 @@ public class ClientManager implements Runnable{
 				Socket s = thisNode.getServerSocket().accept();
 				in = new ObjectInputStream(s.getInputStream());
 				Msg msg = (Msg)in.readObject();
-		
+
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -39,13 +41,13 @@ public class ClientManager implements Runnable{
 			}
 
 		}
-		
+
 		System.out.println("Stopping client Manager");
 		runCleanUp();
 	}
 
 	public void runCleanUp() {
-		
+
 		System.out.println("Closing server sockets");
 		try {
 			thisNode.serverSocket.close();

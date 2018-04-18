@@ -1,128 +1,117 @@
 package com.ghs.main;
 
 import java.io.Serializable;
-import java.util.HashMap;
 
 public class Msg implements Serializable {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
-	
-	//flag to identify null message
-	boolean nullMsgFlag;
-	int x;
-	int d;
-	
-	// if round != -1 its a peleg's algorithm message else it's not
-	int round = -1;
+	String messageType;
+	Edge edge;
+	int targetUID;
 	int senderUID;
-
-	boolean bfsMsgFlag = false;
+	int senderComponentId;
+	int phaseNumber;
 	
-	//max degree of node in the bfs
-	int maxDegree;
-	
-	// boolean acknowledgement for Accept and Reject
-	boolean ack;
-	
-	// type of message: true = acknowledgement, false = search;
-	boolean messageTypeAck;
-	
-	//hashmap of children max degree
-	HashMap<Integer, Integer> childMaxDegree = new HashMap<>();
-		
-	public Msg(boolean nullMsgFlag) {
+	public Msg(String messageType, Edge edge, int targetUID, int senderUID, 
+			int senderComponentId, int phaseNumber) {
 		super();
-		this.nullMsgFlag = nullMsgFlag;
+		this.messageType = messageType;
+		this.edge = edge;
+		this.targetUID = targetUID;
+		this.senderUID = senderUID;
+		this.senderComponentId = senderComponentId;
+		this.phaseNumber = phaseNumber;
 	}
 
-	public Msg(int x, int d, int round, int UID) {
-		super();
-		this.x = x;
-		this.d = d;
-		this.round = round;
-		this.nullMsgFlag=false;
-		this.senderUID=UID;
+	/**
+	 * @return the messageType
+	 */
+	public String getMessageType() {
+		return messageType;
 	}
 
-	public Msg(int maxDegree, boolean ack, int senderUID, boolean messageTypeAck, boolean bfsFlag, HashMap<Integer, Integer> childMaxDegree)
-	{
-		this.maxDegree = maxDegree;
-		this.ack = ack;
-		this.senderUID = senderUID;
-		this.messageTypeAck = messageTypeAck;
-		this.bfsMsgFlag = bfsFlag;
-		this.childMaxDegree = childMaxDegree;
-		
+	/**
+	 * @param messageType the messageType to set
+	 */
+	public void setMessageType(String messageType) {
+		this.messageType = messageType;
 	}
-	
-	public Msg(int senderUID, boolean messageTypeAck, boolean bfsMsgFlag)
-	{
-		this.senderUID = senderUID;
-		this.messageTypeAck = messageTypeAck;
-		this.bfsMsgFlag = bfsMsgFlag;
+
+	/**
+	 * @return the edge
+	 */
+	public Edge getEdge() {
+		return edge;
 	}
-	
+
+	/**
+	 * @param edge the edge to set
+	 */
+	public void setEdge(Edge edge) {
+		this.edge = edge;
+	}
+
+	/**
+	 * @return the targetUID
+	 */
+	public int getTargetUID() {
+		return targetUID;
+	}
+
+	/**
+	 * @param targetUID the targetUID to set
+	 */
+	public void setTargetUID(int targetUID) {
+		this.targetUID = targetUID;
+	}
+
+	/**
+	 * @return the senderUID
+	 */
 	public int getSenderUID() {
 		return senderUID;
 	}
 
+	/**
+	 * @param senderUID the senderUID to set
+	 */
 	public void setSenderUID(int senderUID) {
 		this.senderUID = senderUID;
 	}
 
-	public int getMaxDegree() {
-		return maxDegree;
+	/**
+	 * @return the senderComponentId
+	 */
+	public int getSenderComponentId() {
+		return senderComponentId;
 	}
 
-	public void setMaxDegree(int maxDegree) {
-		this.maxDegree = maxDegree;
+	/**
+	 * @param senderComponentId the senderComponentId to set
+	 */
+	public void setSenderComponentId(int senderComponentId) {
+		this.senderComponentId = senderComponentId;
 	}
 
-	public boolean isAck() {
-		return ack;
+	/**
+	 * @return the phaseNumber
+	 */
+	public int getPhaseNumber() {
+		return phaseNumber;
 	}
 
-	public void setAck(boolean ack) {
-		this.ack = ack;
+	/**
+	 * @param phaseNumber the phaseNumber to set
+	 */
+	public void setPhaseNumber(int phaseNumber) {
+		this.phaseNumber = phaseNumber;
 	}
 
-	public int getX() {
-		return x;
+	/**
+	 * @return the serialversionuid
+	 */
+	public static long getSerialversionuid() {
+		return serialVersionUID;
 	}
-
-	public void setX(int x) {
-		this.x = x;
-	}
-
-	public int getD() {
-		return d;
-	}
-
-	public void setD(int d) {
-		this.d = d;
-	}
-
-	public int getRound() {
-		return round;
-	}
-
-	public void setRound(int round) {
-		this.round = round;
-	}
-
-	public boolean isNullMsgFlag() {
-		return nullMsgFlag;
-	}
-
-	public void setNullMsgFlag(boolean nullMsgFlag) {
-		this.nullMsgFlag = nullMsgFlag;
-	}
-
-	@Override
-	public String toString() {
-		return ( "X:" + this.x + ",D:" + this.d + ",Round:" + this.round + ",Sender:" + this.senderUID);
-	}
+	
 }

@@ -15,7 +15,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Node {
 
 	int UID;
-	int leaderUID;
+	int componentId;
 	ArrayList<Edge> graphEdges;
 	ArrayList<Edge> treeEdges;
 	Boolean leaderInd;
@@ -50,11 +50,11 @@ public class Node {
 	}
 
 	public int getLeaderUID() {
-		return leaderUID;
+		return componentId;
 	}
 
 	public void setLeaderUID(int leaderUID) {
-		this.leaderUID = leaderUID;
+		this.componentId = leaderUID;
 	}
 
 	public ArrayList<Edge> getGraphEdges() {
@@ -188,7 +188,7 @@ public class Node {
 
 		thisNode.setServerSocket(socket);
 
-		System.out.println("Config file read, Socket created");
+		System.out.println("Config file read, Server Socket created");
 
 		/*
 		 * Start client manager process which will keep accepting incoming connections to socket
