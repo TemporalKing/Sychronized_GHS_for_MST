@@ -1,0 +1,56 @@
+package com.ghs.main;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.net.Socket;
+
+/*
+ * Thread to handle incoming connections to node socket
+ * Till termination, it listens to socket and puts all the messages
+ * to thread safe collection
+ */
+public class ClientManager implements Runnable{
+
+	//object of type node on which this thread runs
+	Node thisNode;
+
+	public ClientManager(Node t) {
+		super();
+		this.thisNode = t;
+	}
+
+	@Override
+	public void run() {
+
+		while(!thisNode.isStopClientMgr())
+		{
+			ObjectInputStream in = null;
+
+			try {
+				Socket s = thisNode.getServerSocket().accept();
+				in = new ObjectInputStream(s.getInputStream());
+				Msg msg = (Msg)in.readObject();
+		
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+
+		}
+		
+		System.out.println("Stopping client Manager");
+		runCleanUp();
+	}
+
+	public void runCleanUp() {
+		
+		System.out.println("Closing server sockets");
+		try {
+			thisNode.serverSocket.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}
