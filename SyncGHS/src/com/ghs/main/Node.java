@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -16,15 +15,97 @@ public class Node {
 
 	int UID;
 	int componentId;
-	ArrayList<Edge> graphEdges;
-	ArrayList<Edge> treeEdges;
-	Boolean leaderInd;
+	CopyOnWriteArrayList<Edge> graphEdges;
+	CopyOnWriteArrayList<Edge> treeEdges;
+	boolean leaderInd;
 
 	String host;
 	int port;
 	ServerSocket serverSocket;
 
 	boolean stopClientMgr;
+	boolean isMarked;
+	int phaseNumber;
+	boolean startMWOESearchFlag;
+	int BFSParentUID;
+
+	/**
+	 * @return the bFSParentUID
+	 */
+	public synchronized int getBFSParentUID() {
+		return BFSParentUID;
+	}
+
+	/**
+	 * @param bFSParentUID the bFSParentUID to set
+	 */
+	public synchronized void setBFSParentUID(int bFSParentUID) {
+		BFSParentUID = bFSParentUID;
+	}
+
+	/**
+	 * @return the componentId
+	 */
+	public int getComponentId() {
+		return componentId;
+	}
+
+	/**
+	 * @param componentId the componentId to set
+	 */
+	public void setComponentId(int componentId) {
+		this.componentId = componentId;
+	}
+
+	/**
+	 * @return the isMarked
+	 */
+	public boolean isMarked() {
+		return isMarked;
+	}
+
+	/**
+	 * @param isMarked the isMarked to set
+	 */
+	public void setMarked(boolean isMarked) {
+		this.isMarked = isMarked;
+	}
+
+	/**
+	 * @param leaderInd the leaderInd to set
+	 */
+	public void setLeaderInd(boolean leaderInd) {
+		this.leaderInd = leaderInd;
+	}
+
+	Node(int id)
+	{
+		this.UID = id;
+		this.msgBuffer = new CopyOnWriteArrayList<>();
+		this.graphEdges = new CopyOnWriteArrayList<>();
+		this.treeEdges = new CopyOnWriteArrayList<>();
+		this.mwoeCadidateReplyBuffer = new CopyOnWriteArrayList<>();
+		this.leaderInd = true;
+		this.componentId = this.UID;
+		this.phaseNumber = 0;
+		this.startMWOESearchFlag = true;
+		this.BFSParentUID = -1;
+	}
+
+	/**
+	 * @return the startMWOESearchFlag
+	 */
+	public synchronized boolean isStartMWOESearchFlag() {
+		return startMWOESearchFlag;
+	}
+
+	/**
+	 * @param startMWOESearchFlag the startMWOESearchFlag to set
+	 */
+	public synchronized void setStartMWOESearchFlag(boolean startMWOESearchFlag) {
+		this.startMWOESearchFlag = startMWOESearchFlag;
+	}
+
 	public synchronized boolean isStopClientMgr() {
 		return stopClientMgr;
 	}
@@ -40,6 +121,7 @@ public class Node {
 	 * Thread safe buffer of messages received till now
 	 */
 	CopyOnWriteArrayList<Msg> msgBuffer;
+	CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer;
 
 	public int getUID() {
 		return UID;
@@ -57,19 +139,19 @@ public class Node {
 		this.componentId = leaderUID;
 	}
 
-	public ArrayList<Edge> getGraphEdges() {
+	public CopyOnWriteArrayList<Edge> getGraphEdges() {
 		return graphEdges;
 	}
 
-	public void setGraphEdges(ArrayList<Edge> graphEdges) {
+	public void setGraphEdges(CopyOnWriteArrayList<Edge> graphEdges) {
 		this.graphEdges = graphEdges;
 	}
 
-	public ArrayList<Edge> getTreeEdges() {
+	public CopyOnWriteArrayList<Edge> getTreeEdges() {
 		return treeEdges;
 	}
 
-	public void setTreeEdges(ArrayList<Edge> treeEdges) {
+	public void setTreeEdges(CopyOnWriteArrayList<Edge> treeEdges) {
 		this.treeEdges = treeEdges;
 	}
 
@@ -113,18 +195,27 @@ public class Node {
 		Node.configMap = configMap;
 	}
 
-	public CopyOnWriteArrayList<Msg> getMsgBuffer() {
+	public synchronized CopyOnWriteArrayList<Msg> getMsgBuffer() {
 		return msgBuffer;
 	}
 
-	public void setMsgBuffer(CopyOnWriteArrayList<Msg> msgBuffer) {
+	public synchronized void setMsgBuffer(CopyOnWriteArrayList<Msg> msgBuffer) {
 		this.msgBuffer = msgBuffer;
 	}
 
-	Node(int id)
-	{
-		this.UID = id;
-		this.msgBuffer = new CopyOnWriteArrayList<>();
+
+	/**
+	 * @return the phaseNumber
+	 */
+	public synchronized int getPhaseNumber() {
+		return phaseNumber;
+	}
+
+	/**
+	 * @param phaseNumber the phaseNumber to set
+	 */
+	public synchronized void setPhaseNumber(int phaseNumber) {
+		this.phaseNumber = phaseNumber;
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -165,24 +256,36 @@ public class Node {
 					line = sc.nextLine().trim();
 					nodeParsingDone=true;
 				}
-						
+
 			}
-			
+
 			if(nodeParsingDone && !line.startsWith("#"))
 			{
 				String[] nodeData = line.split("\\s+");
 				String[] edge = nodeData[0].substring(1, nodeData[0].length()-1).split(",");
-				
+
 				Edge edg = new Edge(Integer.parseInt(edge[0]), 
 						Integer.parseInt(edge[1]), Integer.parseInt(nodeData[1]));
-				
+
 				edgeList.add(edg);	
 			}
 		}
 
+		sc.close();
+
+		/*
+		 * filter only this nodes edges
+		 */
+		CopyOnWriteArrayList<Edge> tempList = new CopyOnWriteArrayList<>();
+		for(Edge e: edgeList)
+		{
+			if(e.isContainsUID(UID))
+				tempList.add(e);
+		}
+
 		Node.setConfigMap(confMap);
 		Node thisNode = Node.getConfigMap().get(UID);
-		thisNode.setTreeEdges(edgeList);
+		thisNode.setGraphEdges(tempList);
 
 		ServerSocket socket = new ServerSocket(thisNode.getPort(), numberOfNode);
 
@@ -198,8 +301,34 @@ public class Node {
 		Thread t = new Thread(ct);
 		t.start();
 
-		
-		sc.close();
+		System.out.println("Waiting for all nodes to spin up");
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+
+		/*
+		 * Start GHS processing now
+		 */
+		GHSProcessor ghsProcessor = new GHSProcessor(thisNode);
+		Thread t1 = new Thread(ghsProcessor);
+		t1.start();
+	}
+
+	/**
+	 * @return the mwoeCadidateReplyBuffer
+	 */
+	public synchronized CopyOnWriteArrayList<Msg> getMwoeCadidateReplyBuffer() {
+		return mwoeCadidateReplyBuffer;
+	}
+
+	/**
+	 * @param mwoeCadidateReplyBuffer the mwoeCadidateReplyBuffer to set
+	 */
+	public synchronized void setMwoeCadidateReplyBuffer(CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer) {
+		this.mwoeCadidateReplyBuffer = mwoeCadidateReplyBuffer;
 	}
 
 }

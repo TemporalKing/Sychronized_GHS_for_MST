@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 
+import com.ghs.main.GHSUtil.MessageType;
+
 /*
  * Thread to handle incoming connections to node socket
  * Till termination, it listens to socket and puts all the messages
@@ -32,7 +34,11 @@ public class ClientManager implements Runnable{
 				Socket s = thisNode.getServerSocket().accept();
 				in = new ObjectInputStream(s.getInputStream());
 				Msg msg = (Msg)in.readObject();
-
+				System.out.println("Received message:" + msg);
+				if(msg.getMessageType() == MessageType.MWOECANDIDATE || msg.getMessageType() == MessageType.MWOECANDIDATE)
+					thisNode.getMwoeCadidateReplyBuffer().add(msg);
+				else
+					thisNode.getMsgBuffer().add(msg);	
 
 			} catch (IOException e) {
 				e.printStackTrace();

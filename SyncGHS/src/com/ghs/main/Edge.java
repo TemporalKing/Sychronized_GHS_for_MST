@@ -1,7 +1,13 @@
 package com.ghs.main;
 
-public class Edge implements Comparable<Edge>{
+import java.io.Serializable;
 
+public class Edge implements Comparable<Edge>, Serializable{
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1462118527829731810L;
 	int firstUID;
 	int secondUID;
 	int weight;
@@ -52,20 +58,11 @@ public class Edge implements Comparable<Edge>{
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
+		Edge e = (Edge) obj;
+		if(this.getWeight()==e.getWeight() && this.getI()==e.getI() && this.getJ()==e.getJ())
 			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Edge other = (Edge) obj;
-		if (firstUID != other.firstUID)
-			return false;
-		if (secondUID != other.secondUID)
-			return false;
-		if (weight != other.weight)
-			return false;
-		return true;
+
+		return false;
 	}
 
 	@Override
@@ -88,7 +85,14 @@ public class Edge implements Comparable<Edge>{
 					return 1;
 			}
 		}
-		
+
 		return 0;
+	}
+
+	public boolean isContainsUID(int UID)
+	{
+		if(this.firstUID==UID || this.secondUID==UID)
+			return true;
+		return false;	
 	}
 }
