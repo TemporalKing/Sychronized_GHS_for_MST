@@ -56,6 +56,7 @@ public class GHSProcessor implements Runnable{
 				e.printStackTrace();
 			}
 
+			processInformNewLeaderMessage();
 			processNewLeaderMessage();
 
 		}
@@ -86,6 +87,7 @@ public class GHSProcessor implements Runnable{
 					//Msg newLeaderMSg = new Msg(MessageType.NEWLEADER, message.getEdge(), targetUID, senderUID, senderComponentId, phaseNumber)
 					sendMessageOnTreeEdges(thisNode, message, MessageType.NEWLEADER);
 					moveToNextPhase(thisNode, message.getEdge().getI());
+					printAllTreeEdges();
 
 				}
 			}
@@ -114,8 +116,8 @@ public class GHSProcessor implements Runnable{
 						break;
 
 					case MERGE:
-						if(processMergeMsg(message))
-							messageBuffer.remove(message);
+						processMergeMsg(message);
+						messageBuffer.remove(message);
 						break;
 
 					default:
@@ -127,7 +129,7 @@ public class GHSProcessor implements Runnable{
 		}
 	}
 
-	public boolean processMergeMsg(Msg message) {
+	public void processMergeMsg(Msg message) {
 
 
 		if(!isNodePartOfEdge(thisNode, message.getEdge())) {
@@ -170,51 +172,65 @@ public class GHSProcessor implements Runnable{
 				/*
 				 * Edge from merge message already exist in my tree list
 				 * damn, I found core edge, OK then, find max UID on this edge
-				 * and send it as new leader on all of my tree edges, update my phase number,
-				 * component id with new leader, might need message queue clean up, wait for others to
-				 * complete mwoe search and merge
+				 * and send it you are the new leade message
 				 */
 
 				int newLeaderUID = Math.max(message.getEdge().getI(), message.getEdge().getJ());
 				System.out.println("Whola, New Leader found-->" + newLeaderUID);
 
-				try {
-					Thread.sleep(5000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-
-
-				/*
-				 * 3n rounds dummy message transfer
-				 */
-
-				int dummyTarget = thisNode.getUID()!=thisNode.getGraphEdges().get(0).getI()?thisNode.getGraphEdges().get(0).getI():thisNode.getGraphEdges().get(0).getJ();
-
-				for(int i=0;i< (1*thisNode.getNumberOfNodes());i++)
-				{
-					Msg dummyMsg = new Msg(MessageType.DUMMY, null, dummyTarget, thisNode.getUID(), -1, thisNode.getPhaseNumber());
-					sendMessage(dummyMsg, dummyTarget);
-				}
-
-				if(thisNode.getNumberOfDummyReplies() >= (1*thisNode.getNumberOfNodes()))
-				{
-					Edge leaderEdge = new Edge(newLeaderUID, newLeaderUID, 0);
-					Msg leaderMsgDataHolder = new Msg(MessageType.NEWLEADER, leaderEdge, -1, -1, -1, -1);
-
-					sendMessageOnTreeEdges(thisNode, leaderMsgDataHolder, MessageType.NEWLEADER);
-
-					moveToNextPhase(thisNode,newLeaderUID);
-				}
-				else {
-					System.out.println("Waiting for 3N synch to complete-- received till now " + thisNode.getNumberOfDummyReplies());
-					return false;
-				}
+				Msg newLeaderInfoMsg = new Msg(MessageType.NEWLEADERINFO, new Edge(newLeaderUID, newLeaderUID, -1), newLeaderUID,
+						thisNode.getUID(), thisNode.getComponentId(), thisNode.getPhaseNumber());
+				sendMessage(newLeaderInfoMsg, newLeaderUID);
 
 			}
 
 		}
-		return true;
+	}
+
+	public void processInformNewLeaderMessage()
+	{
+		
+		CopyOnWriteArrayList<Msg> messageBuffer = thisNode.getMsgBuffer();
+		synchronized (messageBuffer) {
+			for(Iterator<Msg> iterator = messageBuffer.iterator(); iterator.hasNext();)
+			{
+				Msg message = iterator.next();
+
+				/*
+				 * get current phase unprocessed message out of buffer
+				 * process it, once processed, remove message from the buffer
+				 */
+				if(message.getPhaseNumber() == thisNode.getPhaseNumber() && message.getMessageType()==MessageType.NEWLEADERINFO)
+				{
+					/*
+					 * 3n rounds dummy message transfer
+					 */
+
+					int dummyTarget = thisNode.getUID()!=thisNode.getGraphEdges().get(0).getI()?thisNode.getGraphEdges().get(0).getI():thisNode.getGraphEdges().get(0).getJ();
+
+					for(int i=0;i< (1*thisNode.getNumberOfNodes());i++)
+					{
+						Msg dummyMsg = new Msg(MessageType.DUMMY, null, dummyTarget, thisNode.getUID(), -1, thisNode.getPhaseNumber());
+						sendMessage(dummyMsg, dummyTarget);
+					}
+
+					if(thisNode.getNumberOfDummyReplies() >= (1*thisNode.getNumberOfNodes()))
+					{
+						int newLeaderUID = message.getEdge().getI();
+						messageBuffer.remove(message);
+						
+						Edge leaderEdge = new Edge(newLeaderUID, newLeaderUID, 0);
+						Msg leaderMsgDataHolder = new Msg(MessageType.NEWLEADER, leaderEdge, -1, -1, -1, -1);
+						sendMessageOnTreeEdges(thisNode, leaderMsgDataHolder, MessageType.NEWLEADER);
+						moveToNextPhase(thisNode,newLeaderUID);
+					}
+					else {
+						System.out.println("Waiting for 3N synch to complete-- received till now " + thisNode.getNumberOfDummyReplies());
+					}
+				}
+			}
+		}
+		
 	}
 
 	public void moveToNextPhase(Node thisNode2, int newLeaderUID) {
@@ -364,7 +380,11 @@ public class GHSProcessor implements Runnable{
 						}
 						else
 						{
-							System.out.println("Leader found");
+							System.out.println("Whola, Leader found in MWOE candiate processing");
+							int newLeaderUID = Math.max(minEdge.getI(), minEdge.getJ());
+							Msg newLeaderInfoMsg = new Msg(MessageType.NEWLEADERINFO, new Edge(newLeaderUID, newLeaderUID, -1), newLeaderUID,
+									thisNode.getUID(), thisNode.getComponentId(), thisNode.getPhaseNumber());
+							sendMessage(newLeaderInfoMsg, newLeaderUID);
 						}
 
 					}
@@ -553,6 +573,7 @@ public class GHSProcessor implements Runnable{
 
 	public void printAllTreeEdges()
 	{
+		System.out.println("My leader is: " + thisNode.getComponentId());
 		System.out.println("All my tree edges are");
 		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode.getTreeEdges();
 		synchronized (nodeTreeEdgeList) {
