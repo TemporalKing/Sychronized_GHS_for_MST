@@ -2,6 +2,7 @@ package com.ghs.main;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 import com.ghs.main.GHSUtil.MessageType;
@@ -34,12 +35,24 @@ public class ClientManager implements Runnable{
 				Socket s = thisNode.getServerSocket().accept();
 				in = new ObjectInputStream(s.getInputStream());
 				Msg msg = (Msg)in.readObject();
-				System.out.println("Received message:" + msg);
-				if(msg.getMessageType() == MessageType.MWOECANDIDATE || msg.getMessageType() == MessageType.MWOECANDIDATE)
-					thisNode.getMwoeCadidateReplyBuffer().add(msg);
-				else
-					thisNode.getMsgBuffer().add(msg);	
+				System.out.println("Received " + msg.getMessageType() + " message:" + msg);
 
+				if(msg.messageType==MessageType.DUMMY && msg.getSenderUID()!=-1)
+				{
+					Msg message = new Msg(MessageType.DUMMY, null, msg.getSenderUID(), -1, -1, thisNode.getPhaseNumber());
+					sendMessage(message, message.getTargetUID());
+				}
+				if(msg.getSenderUID()==-1)
+					thisNode.setNumberOfDummyReplies((thisNode.getNumberOfDummyReplies()+1));
+
+				if(msg.messageType!=MessageType.DUMMY)
+				{
+					if(msg.getMessageType() == MessageType.MWOECANDIDATE || msg.getMessageType() == MessageType.MWOECANDIDATE)
+						thisNode.getMwoeCadidateReplyBuffer().add(msg);
+					else
+						thisNode.getMsgBuffer().add(msg);	
+
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
@@ -60,5 +73,21 @@ public class ClientManager implements Runnable{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public void sendMessage(Msg message, int targetUID)
+	{
+		Node targetNode  = Node.getConfigMap().get(targetUID);
+		try {
+			Socket socket = new Socket(targetNode.getHost(), targetNode.getPort());
+			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+			System.out.println("Sending message: " + message);
+			out.writeObject(message);
+			socket.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 }

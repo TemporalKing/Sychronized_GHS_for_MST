@@ -38,12 +38,59 @@ public class GHSProcessor implements Runnable{
 				sendMWOESearch(thisNode.getUID());
 			}
 
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			processMessages();
 			processMWOECandidateMsg();
+
+			//should i sleep for some time before processing new leader message ?
+			// i guess yes, to wait for all merge messages to reach me if any
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			processNewLeaderMessage();
+
 		}
 
 		System.out.println("Stopping client Manager");
 		runCleanUp();
+	}
+
+	public void processNewLeaderMessage() {
+		CopyOnWriteArrayList<Msg> messageBuffer = thisNode.getMsgBuffer();
+		synchronized (messageBuffer) {
+			for(Iterator<Msg> iterator = messageBuffer.iterator(); iterator.hasNext();)
+			{
+				Msg message = iterator.next();
+
+				/*
+				 * get current phase unprocessed message out of buffer
+				 * process it, once processed, remove message from the buffer
+				 */
+				if(message.getPhaseNumber() == thisNode.getPhaseNumber() && message.getMessageType() == MessageType.NEWLEADER)
+				{
+					System.out.println("Okay, well lets process new leader message now ->" + message);
+
+					/*
+					 * update my leader id, phase number, reset few flags
+					 * get ready for next phase
+					 */
+					//Msg newLeaderMSg = new Msg(MessageType.NEWLEADER, message.getEdge(), targetUID, senderUID, senderComponentId, phaseNumber)
+					sendMessageOnTreeEdges(thisNode, message, MessageType.NEWLEADER);
+					moveToNextPhase(thisNode, message.getEdge().getI());
+
+				}
+			}
+		}
+
 	}
 
 	public void processMessages() {
@@ -66,6 +113,11 @@ public class GHSProcessor implements Runnable{
 						messageBuffer.remove(message);
 						break;
 
+					case MERGE:
+						if(processMergeMsg(message))
+							messageBuffer.remove(message);
+						break;
+
 					default:
 						break;
 					}
@@ -73,6 +125,142 @@ public class GHSProcessor implements Runnable{
 			}
 
 		}
+	}
+
+	public boolean processMergeMsg(Msg message) {
+
+
+		if(!isNodePartOfEdge(thisNode, message.getEdge())) {
+			/*
+			 * if this node is not on the min edge in the merge message,
+			 * just relay that message to all my tree edges except sender
+			 */
+			System.out.println("Well, I am not a part of edge from merge msg, relaying it");
+			sendMessageOnTreeEdges(thisNode,message,MessageType.MERGE);
+		}
+		else
+		{
+			/*
+			 * if this node is on the edge from the merge message, need to start
+			 * merge process, this will also have logic to detect the core edge
+			 * and detect new leader
+			 */
+			if(!edgeExistInTreeEdgeList(message.getEdge(), thisNode))
+			{
+				/*
+				 * Edge does not exist in my tree list
+				 * add it and pass on merge message to other end of 
+				 * the edge, that other end should detect new leader
+				 */
+				System.out.println("Great, Edge does not exist, adding it to my tree edge list ->" + message.getEdge());
+				thisNode.getTreeEdges().add(message.getEdge());
+				printAllTreeEdges();
+				int targeUID = thisNode.getUID()!=message.getEdge().getI()? message.getEdge().getI():message.getEdge().getJ();
+
+				if(message.getSenderComponentId()== thisNode.getComponentId())
+				{
+					Msg mergeMsg = new Msg(MessageType.MERGE, message.getEdge(), targeUID, 
+							thisNode.getUID(), thisNode.getComponentId(), thisNode.getPhaseNumber());
+
+					sendMessage(mergeMsg, targeUID);
+				}
+			}
+			else
+			{
+				/*
+				 * Edge from merge message already exist in my tree list
+				 * damn, I found core edge, OK then, find max UID on this edge
+				 * and send it as new leader on all of my tree edges, update my phase number,
+				 * component id with new leader, might need message queue clean up, wait for others to
+				 * complete mwoe search and merge
+				 */
+
+				int newLeaderUID = Math.max(message.getEdge().getI(), message.getEdge().getJ());
+				System.out.println("Whola, New Leader found-->" + newLeaderUID);
+
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+
+				/*
+				 * 3n rounds dummy message transfer
+				 */
+
+				int dummyTarget = thisNode.getUID()!=thisNode.getGraphEdges().get(0).getI()?thisNode.getGraphEdges().get(0).getI():thisNode.getGraphEdges().get(0).getJ();
+
+				for(int i=0;i< (1*thisNode.getNumberOfNodes());i++)
+				{
+					Msg dummyMsg = new Msg(MessageType.DUMMY, null, dummyTarget, thisNode.getUID(), -1, thisNode.getPhaseNumber());
+					sendMessage(dummyMsg, dummyTarget);
+				}
+
+				if(thisNode.getNumberOfDummyReplies() >= (1*thisNode.getNumberOfNodes()))
+				{
+					Edge leaderEdge = new Edge(newLeaderUID, newLeaderUID, 0);
+					Msg leaderMsgDataHolder = new Msg(MessageType.NEWLEADER, leaderEdge, -1, -1, -1, -1);
+
+					sendMessageOnTreeEdges(thisNode, leaderMsgDataHolder, MessageType.NEWLEADER);
+
+					moveToNextPhase(thisNode,newLeaderUID);
+				}
+				else {
+					System.out.println("Waiting for 3N synch to complete-- received till now " + thisNode.getNumberOfDummyReplies());
+					return false;
+				}
+
+			}
+
+		}
+		return true;
+	}
+
+	public void moveToNextPhase(Node thisNode2, int newLeaderUID) {
+		/*
+		 * set unmarked, phase number+1, new Leader, startMWOESearchFlag=true, bfsparentid=-1
+		 */
+		System.out.println("Woh woh, changing my phase, leader and other crap");
+
+		thisNode2.setComponentId(newLeaderUID);
+		if(thisNode2.getUID()!=newLeaderUID)
+			thisNode2.setLeaderInd(false);
+		thisNode2.setPhaseNumber((thisNode2.getPhaseNumber()+1));
+		thisNode2.setMarked(false);
+		thisNode2.setStartMWOESearchFlag(true);
+		thisNode2.setBFSParentUID(-1);
+	}
+
+	public void sendMessageOnTreeEdges(Node thisNode2, Msg message, MessageType merge) {
+
+		/*
+		 * send merge message to all tree edges of this node except one which sent the message.
+		 */
+		System.out.println("Sending message on all tree edges except sender-" + merge);
+		printAllTreeEdges();
+
+		CopyOnWriteArrayList<Edge> treeEdgesList = thisNode2.getTreeEdges();
+		synchronized (treeEdgesList) {
+			for(Iterator<Edge> itr = treeEdgesList.iterator();itr.hasNext();)
+			{
+				Edge e = itr.next();
+				int targetId = getTargetUID(thisNode2,e);
+
+				if(targetId!=message.getSenderUID())
+				{
+					Msg msg = new Msg(merge, message.getEdge(), targetId, 
+							thisNode2.getUID(), thisNode2.getComponentId(), thisNode2.getPhaseNumber());
+
+					sendMessage(msg, targetId);
+				}
+			}
+		}
+	}
+
+	public int getTargetUID(Node thisNode2, Edge e) {
+
+		return (thisNode2.getUID()!=e.getI()?e.getI():e.getJ());
 	}
 
 	public void processMWOECandidateMsg() {
@@ -104,6 +292,7 @@ public class GHSProcessor implements Runnable{
 			}
 
 			Edge minEdge = getMinEdge(tempCandiateList);
+			System.out.println("Min Edge found " + (minEdge!=null? minEdge:"null"));
 
 			/*
 			 * if this node is not leader then either send 
@@ -111,6 +300,7 @@ public class GHSProcessor implements Runnable{
 			 * then send mwoe reject to parent
 			 */
 			if(!thisNode.getLeaderInd()) {
+				System.out.println("Sending min edge to updward parent");
 				if(minEdge!=null)
 				{
 					/*
@@ -141,10 +331,142 @@ public class GHSProcessor implements Runnable{
 				 * if global min not null then initiate merge process
 				 * else send termination message
 				 */
-				
+				if(minEdge==null)
+				{
+					/*
+					 * send termination signal along tree edges
+					 *
+					 */
+					System.out.println("MWOE search failed, termination detected");
+				}
+				else
+				{
+					//System.out.println("Sending merge message on tree edges");
+					/*
+					 * this node is leader and found global min edge which is not
+					 * connected to you,
+					 * send merge message to all its tree edges
+					 */
+					if(thisNode.getTreeEdges().size()!=0 && !isNodePartOfEdge(thisNode, minEdge))
+						sendMergeMsgOnTreeEdges(minEdge);
+					else
+					{
+						if(!edgeExistInTreeEdgeList(minEdge, thisNode))
+						{
+							int targetUID = thisNode.getUID()!=minEdge.getI()?minEdge.getI():minEdge.getJ();
+
+							System.out.println("Addint min edge in my edge list--> " + minEdge);
+							thisNode.getTreeEdges().add(minEdge);
+
+							Msg msg = new Msg(MessageType.MERGE, minEdge, targetUID, thisNode.getUID(), 
+									thisNode.getComponentId(), thisNode.getPhaseNumber());
+							sendMessage(msg, targetUID);
+						}
+						else
+						{
+							System.out.println("Leader found");
+						}
+
+					}
+				}
 			}
 
 		}
+	}
+
+	//	public void initiateMergeProcess(Edge minEdge) {
+	//
+	//		/*
+	//		 * check if this node is one of the node on the minEdge
+	//		 */
+	//		if(isNodePartOfEdge(thisNode,minEdge))
+	//		{
+	//			/*
+	//			 * check if edge does exist in tree edges, if exist then leader elected
+	//			 * else add it and pass merge message on other end of and edge
+	//			 */
+	//
+	//			if(!existEdgeInTreeEdgeList(minEdge))
+	//			{
+	//				thisNode.getTreeEdges().add(minEdge);
+	//				int targetUID = thisNode.getUID()!=minEdge.getI()? minEdge.getI(): minEdge.getJ();
+	//				Msg mergeMsg = new Msg(MessageType.MERGE, minEdge, targetUID, thisNode.getUID(), 
+	//						thisNode.getComponentId(), thisNode.getPhaseNumber());
+	//
+	//				sendMessage(mergeMsg, targetUID);
+	//			}
+	//			else
+	//			{
+	//				/*
+	//				 * new leader detection
+	//				 */
+	//			}
+	//		}
+	//		else
+	//		{
+	//			/*
+	//			 * if merge message from same component and this node is not part of merge message edge
+	//			 * relay message to all tree edges except one along with message was sent
+	//			 */
+	//			if()
+	//		}
+	//	}
+
+	public void sendMergeMsgOnTreeEdges(Edge minEdge) {
+		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode.getTreeEdges();
+		synchronized (nodeTreeEdgeList) {
+			for(Iterator<Edge> itr= nodeTreeEdgeList.iterator(); itr.hasNext();)
+			{
+				Edge e = (Edge) itr.next();
+				int targetUID = thisNode.getUID()!=e.getI()?e.getI():e.getJ();
+
+				Msg mergeMessage = new Msg(MessageType.MERGE, minEdge, targetUID, thisNode.getUID(), 
+						thisNode.getComponentId(), thisNode.getPhaseNumber());
+
+				sendMessage(mergeMessage, targetUID);
+			}
+		}
+
+	}
+
+	public boolean existEdgeInTreeEdgeList(Edge minEdge) {
+
+		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode.getTreeEdges();
+		synchronized (nodeTreeEdgeList) {
+			for(Iterator<Edge> itr= nodeTreeEdgeList.iterator(); itr.hasNext();)
+			{
+				Edge e = (Edge) itr.next();
+
+				if(e.equals(minEdge))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean isNodePartOfEdge(Node thisNode2, Edge minEdge) {
+		if(thisNode2.getUID()==minEdge.getI() || thisNode2.getUID()==minEdge.getJ())
+			return true;
+		return false;
+	}
+
+	public void sendMWOEMergeMsg(Edge minEdge, int i) {
+		// TODO Auto-generated method stub
+
+	}
+
+	private boolean edgeExistInTreeEdgeList(Edge minEdge, Node thisNode2) {
+		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode2.getTreeEdges();
+		synchronized (nodeTreeEdgeList) {
+			for(Iterator<Edge> itr= nodeTreeEdgeList.iterator(); itr.hasNext();)
+			{
+				Edge e = (Edge) itr.next();
+				if(e.equals(minEdge))
+					return true;
+			}
+		}
+
+		return false;
 	}
 
 	public Edge getMinEdge(ArrayList<Edge> tempCandiateList) {
@@ -228,6 +550,20 @@ public class GHSProcessor implements Runnable{
 		}
 
 	}
+
+	public void printAllTreeEdges()
+	{
+		System.out.println("All my tree edges are");
+		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode.getTreeEdges();
+		synchronized (nodeTreeEdgeList) {
+			for(Iterator<Edge> itr= nodeTreeEdgeList.iterator(); itr.hasNext();)
+			{
+				Edge e = (Edge) itr.next();
+				System.out.println(e);
+			}
+		}
+	}
+
 
 	public void runCleanUp() {
 

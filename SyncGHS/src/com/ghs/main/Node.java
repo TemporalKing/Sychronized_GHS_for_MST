@@ -28,6 +28,9 @@ public class Node {
 	int phaseNumber;
 	boolean startMWOESearchFlag;
 	int BFSParentUID;
+	int numberOfNodes;
+	int numberOfDummyReplies;
+
 
 	/**
 	 * @return the bFSParentUID
@@ -159,10 +162,6 @@ public class Node {
 		return leaderInd;
 	}
 
-	public void setLeaderInd(Boolean leaderInd) {
-		this.leaderInd = leaderInd;
-	}
-
 	public String getHost() {
 		return host;
 	}
@@ -285,6 +284,7 @@ public class Node {
 
 		Node.setConfigMap(confMap);
 		Node thisNode = Node.getConfigMap().get(UID);
+		thisNode.setNumberOfNodes(numberOfNode);
 		thisNode.setGraphEdges(tempList);
 
 		ServerSocket socket = new ServerSocket(thisNode.getPort(), numberOfNode);
@@ -329,6 +329,34 @@ public class Node {
 	 */
 	public synchronized void setMwoeCadidateReplyBuffer(CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer) {
 		this.mwoeCadidateReplyBuffer = mwoeCadidateReplyBuffer;
+	}
+
+	/**
+	 * @return the numberOfNodes
+	 */
+	public synchronized int getNumberOfNodes() {
+		return numberOfNodes;
+	}
+
+	/**
+	 * @param numberOfNodes the numberOfNodes to set
+	 */
+	public synchronized void setNumberOfNodes(int numberOfNodes) {
+		this.numberOfNodes = numberOfNodes;
+	}
+
+	/**
+	 * @return the numberOfDummyReplies
+	 */
+	public synchronized int getNumberOfDummyReplies() {
+		return numberOfDummyReplies;
+	}
+
+	/**
+	 * @param numberOfDummyReplies the numberOfDummyReplies to set
+	 */
+	public synchronized void setNumberOfDummyReplies(int numberOfDummyReplies) {
+		this.numberOfDummyReplies = numberOfDummyReplies;
 	}
 
 }
