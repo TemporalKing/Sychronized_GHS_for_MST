@@ -58,12 +58,46 @@ public class GHSProcessor implements Runnable{
 
 			processInformNewLeaderMessage();
 			processNewLeaderMessage();
+			checkForTerminationDetection();
 
 		}
 
 		System.out.println("Stopping client Manager");
 		runCleanUp();
 	}
+
+	public void checkForTerminationDetection() {
+
+		// do we need to check message buffers for pending messages
+
+		CopyOnWriteArrayList<Msg> terminateMsgBuffer = thisNode.getTerminateMsgBuffer();
+
+		synchronized (terminateMsgBuffer) {
+
+			for(Iterator<Msg> itr = terminateMsgBuffer.iterator(); itr.hasNext();)
+			{
+				Msg msg = itr.next();
+
+				if(msg.getMessageType()==MessageType.TERMINATE && msg.getPhaseNumber()==thisNode.getPhaseNumber())
+				{
+					if(thisNode.getTerminationDelaycnt() >= 5)
+					{
+						Msg terminateMsg = new Msg(MessageType.TERMINATE, null, 1, thisNode.getUID(),
+								thisNode.getComponentId(), thisNode.getPhaseNumber());
+						
+						sendMessageOnTreeEdges(thisNode, terminateMsg, MessageType.TERMINATE);
+						thisNode.setStopClientMgr(true);
+					}
+					else
+					{
+						thisNode.setTerminationDelaycnt((thisNode.getTerminationDelaycnt()+1));
+					}
+				}
+			}
+		}
+
+	}
+
 
 	public void processNewLeaderMessage() {
 		CopyOnWriteArrayList<Msg> messageBuffer = thisNode.getMsgBuffer();
@@ -247,10 +281,10 @@ public class GHSProcessor implements Runnable{
 		if(thisNode2.getUID()==newLeaderUID)
 			thisNode2.setStartMWOESearchFlag(true);
 		thisNode2.setBFSParentUID(-1);
-		
+
 		thisNode.setSendRejectMsgEnable(true);
 		printAllTreeEdges();
-		
+
 		//should we clear the MwoeCadidateReplyBuffer as well ???
 	}
 
@@ -348,7 +382,7 @@ public class GHSProcessor implements Runnable{
 
 						sendMessage(mwoeCandiate, mwoeCandiate.getTargetUID());
 					}
-					
+
 				}
 			}
 			else
@@ -365,6 +399,11 @@ public class GHSProcessor implements Runnable{
 					 *
 					 */
 					System.out.println("MWOE search failed, termination detected");
+					Msg terminateMsg = new Msg(MessageType.TERMINATE, null, -1, thisNode.getUID(),
+							thisNode.getComponentId(), thisNode.getPhaseNumber());
+					
+					sendMessageOnTreeEdges(thisNode, terminateMsg, MessageType.TERMINATE);
+					thisNode.setStopClientMgr(true);
 				}
 				else
 				{
@@ -406,7 +445,7 @@ public class GHSProcessor implements Runnable{
 		else
 		{
 			System.out.println("waiting for all responses to mwoe search messages, requiredCount= " + requiredCount 
-					+ ", actual count: " + count);
+					+ ", actual count: " + count + ", messageBuffer size: " + messageBuffer.size());
 		}
 	}
 
@@ -581,8 +620,8 @@ public class GHSProcessor implements Runnable{
 			out.writeObject(message);
 			socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			//e.printStackTrace();
+			System.out.println("Error in sending message on socket");
 		}
 
 	}

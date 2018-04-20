@@ -31,6 +31,9 @@ public class Node {
 	int numberOfNodes;
 	int numberOfDummyReplies;
 	boolean sendRejectMsgEnable;
+	boolean terminationDetectFlag;
+	int terminationDelaycnt;
+	CopyOnWriteArrayList<Msg> terminateMsgBuffer;
 
 
 	/**
@@ -89,6 +92,7 @@ public class Node {
 		this.graphEdges = new CopyOnWriteArrayList<>();
 		this.treeEdges = new CopyOnWriteArrayList<>();
 		this.mwoeCadidateReplyBuffer = new CopyOnWriteArrayList<>();
+		this.terminateMsgBuffer = new CopyOnWriteArrayList<>();
 		this.leaderInd = true;
 		this.componentId = this.UID;
 		this.phaseNumber = 0;
@@ -115,7 +119,7 @@ public class Node {
 		return stopClientMgr;
 	}
 
-	public void setStopClientMgr(boolean stopClientMgr) {
+	public synchronized void setStopClientMgr(boolean stopClientMgr) {
 		this.stopClientMgr = stopClientMgr;
 	}
 
@@ -373,6 +377,48 @@ public class Node {
 	 */
 	public synchronized void setSendRejectMsgEnable(boolean sendRejectMsgEnable) {
 		this.sendRejectMsgEnable = sendRejectMsgEnable;
+	}
+
+	/**
+	 * @return the terminationDetectFlag
+	 */
+	public synchronized boolean isTerminationDetectFlag() {
+		return terminationDetectFlag;
+	}
+
+	/**
+	 * @param terminationDetectFlag the terminationDetectFlag to set
+	 */
+	public synchronized void setTerminationDetectFlag(boolean terminationDetectFlag) {
+		this.terminationDetectFlag = terminationDetectFlag;
+	}
+
+	/**
+	 * @return the terminationDelaycnt
+	 */
+	public synchronized int getTerminationDelaycnt() {
+		return terminationDelaycnt;
+	}
+
+	/**
+	 * @param terminationDelaycnt the terminationDelaycnt to set
+	 */
+	public synchronized void setTerminationDelaycnt(int terminationDelaycnt) {
+		this.terminationDelaycnt = terminationDelaycnt;
+	}
+
+	/**
+	 * @return the terminateMsgBuffer
+	 */
+	public synchronized CopyOnWriteArrayList<Msg> getTerminateMsgBuffer() {
+		return terminateMsgBuffer;
+	}
+
+	/**
+	 * @param terminateMsgBuffer the terminateMsgBuffer to set
+	 */
+	public synchronized void setTerminateMsgBuffer(CopyOnWriteArrayList<Msg> terminateMsgBuffer) {
+		this.terminateMsgBuffer = terminateMsgBuffer;
 	}
 
 }
