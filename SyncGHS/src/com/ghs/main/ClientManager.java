@@ -47,7 +47,7 @@ public class ClientManager implements Runnable{
 
 				if(msg.messageType!=MessageType.DUMMY)
 				{
-					if(msg.getMessageType() == MessageType.MWOECANDIDATE || msg.getMessageType() == MessageType.MWOECANDIDATE)
+					if(msg.getMessageType() == MessageType.MWOEREJECT || msg.getMessageType() == MessageType.MWOECANDIDATE)
 						thisNode.getMwoeCadidateReplyBuffer().add(msg);
 					else
 						thisNode.getMsgBuffer().add(msg);	

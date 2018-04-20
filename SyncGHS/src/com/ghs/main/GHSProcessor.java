@@ -395,7 +395,8 @@ public class GHSProcessor implements Runnable{
 		}
 		else
 		{
-			System.out.println("waiting for all responses to mwoe search messages");
+			System.out.println("waiting for all responses to mwoe search messages, requiredCount= " + requiredCount 
+					+ ", actual count: " + count);
 		}
 	}
 
