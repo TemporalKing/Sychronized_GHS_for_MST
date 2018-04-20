@@ -37,11 +37,6 @@ public class ClientManager implements Runnable{
 				Msg msg = (Msg)in.readObject();
 				System.out.println("Received " + msg.getMessageType() + " message:" + msg);
 
-				//				if(msg.getMessageType() == MessageType.TERMINATE)
-				//				{
-				//					thisNode.setStopClientMgr(true);
-				//					continue;
-				//				}
 				if(msg.messageType==MessageType.DUMMY && msg.getSenderUID()!=-1)
 				{
 					Msg message = new Msg(MessageType.DUMMY, null, msg.getSenderUID(), -1, -1, thisNode.getPhaseNumber());
@@ -95,7 +90,6 @@ public class ClientManager implements Runnable{
 			out.writeObject(message);
 			socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 

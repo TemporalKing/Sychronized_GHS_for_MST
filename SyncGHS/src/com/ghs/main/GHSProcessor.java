@@ -39,9 +39,8 @@ public class GHSProcessor implements Runnable{
 			}
 
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(2000);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			processMessages();
@@ -50,23 +49,22 @@ public class GHSProcessor implements Runnable{
 			//should i sleep for some time before processing new leader message ?
 			// i guess yes, to wait for all merge messages to reach me if any
 			try {
-				Thread.sleep(5000);
+				Thread.sleep(3000);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
 			processInformNewLeaderMessage();
 			processNewLeaderMessage();
-			checkForTerminationDetection();
+			detectAndProcessTermination();
 
 		}
 
-		System.out.println("Stopping client Manager");
-		runCleanUp();
+		System.out.println("Stopping GHS Processor");
+		//runCleanUp();
 	}
 
-	public void checkForTerminationDetection() {
+	public void detectAndProcessTermination() {
 
 		// do we need to check message buffers for pending messages
 
@@ -80,11 +78,15 @@ public class GHSProcessor implements Runnable{
 
 				if(msg.getMessageType()==MessageType.TERMINATE && msg.getPhaseNumber()==thisNode.getPhaseNumber())
 				{
+					/*
+					 * do not process termination immediately, wait for 5 rounds to make sure
+					 * any delayed message is received and processed
+					 */
 					if(thisNode.getTerminationDelaycnt() >= 5)
 					{
 						Msg terminateMsg = new Msg(MessageType.TERMINATE, null, 1, thisNode.getUID(),
 								thisNode.getComponentId(), thisNode.getPhaseNumber());
-						
+
 						sendMessageOnTreeEdges(thisNode, terminateMsg, MessageType.TERMINATE);
 						thisNode.setStopClientMgr(true);
 					}
@@ -348,7 +350,7 @@ public class GHSProcessor implements Runnable{
 			}
 
 			Edge minEdge = getMinEdge(tempCandiateList);
-			System.out.println("Min Edge found " + (minEdge!=null? minEdge:"null"));
+			System.out.println("Min Edge found--> " + (minEdge!=null? minEdge:"null"));
 
 			/*
 			 * if this node is not leader then either send 
@@ -356,7 +358,7 @@ public class GHSProcessor implements Runnable{
 			 * then send mwoe reject to parent
 			 */
 			if(!thisNode.getLeaderInd()) {
-				System.out.println("Sending min edge to updward parent");
+				System.out.println("Sending min edge to updward to the parent.");
 				if(minEdge!=null)
 				{
 					/*
@@ -401,7 +403,7 @@ public class GHSProcessor implements Runnable{
 					System.out.println("MWOE search failed, termination detected");
 					Msg terminateMsg = new Msg(MessageType.TERMINATE, null, -1, thisNode.getUID(),
 							thisNode.getComponentId(), thisNode.getPhaseNumber());
-					
+
 					sendMessageOnTreeEdges(thisNode, terminateMsg, MessageType.TERMINATE);
 					thisNode.setStopClientMgr(true);
 				}
@@ -449,44 +451,6 @@ public class GHSProcessor implements Runnable{
 		}
 	}
 
-	//	public void initiateMergeProcess(Edge minEdge) {
-	//
-	//		/*
-	//		 * check if this node is one of the node on the minEdge
-	//		 */
-	//		if(isNodePartOfEdge(thisNode,minEdge))
-	//		{
-	//			/*
-	//			 * check if edge does exist in tree edges, if exist then leader elected
-	//			 * else add it and pass merge message on other end of and edge
-	//			 */
-	//
-	//			if(!existEdgeInTreeEdgeList(minEdge))
-	//			{
-	//				thisNode.getTreeEdges().add(minEdge);
-	//				int targetUID = thisNode.getUID()!=minEdge.getI()? minEdge.getI(): minEdge.getJ();
-	//				Msg mergeMsg = new Msg(MessageType.MERGE, minEdge, targetUID, thisNode.getUID(), 
-	//						thisNode.getComponentId(), thisNode.getPhaseNumber());
-	//
-	//				sendMessage(mergeMsg, targetUID);
-	//			}
-	//			else
-	//			{
-	//				/*
-	//				 * new leader detection
-	//				 */
-	//			}
-	//		}
-	//		else
-	//		{
-	//			/*
-	//			 * if merge message from same component and this node is not part of merge message edge
-	//			 * relay message to all tree edges except one along with message was sent
-	//			 */
-	//			if()
-	//		}
-	//	}
-
 	public void sendMergeMsgOnTreeEdges(Edge minEdge) {
 		CopyOnWriteArrayList<Edge> nodeTreeEdgeList = thisNode.getTreeEdges();
 		synchronized (nodeTreeEdgeList) {
@@ -523,11 +487,6 @@ public class GHSProcessor implements Runnable{
 		if(thisNode2.getUID()==minEdge.getI() || thisNode2.getUID()==minEdge.getJ())
 			return true;
 		return false;
-	}
-
-	public void sendMWOEMergeMsg(Edge minEdge, int i) {
-		// TODO Auto-generated method stub
-
 	}
 
 	private boolean edgeExistInTreeEdgeList(Edge minEdge, Node thisNode2) {
