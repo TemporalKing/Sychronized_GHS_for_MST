@@ -189,7 +189,7 @@ public class GHSProcessor implements Runnable{
 
 	public void processInformNewLeaderMessage()
 	{
-		
+
 		CopyOnWriteArrayList<Msg> messageBuffer = thisNode.getMsgBuffer();
 		synchronized (messageBuffer) {
 			for(Iterator<Msg> iterator = messageBuffer.iterator(); iterator.hasNext();)
@@ -218,7 +218,7 @@ public class GHSProcessor implements Runnable{
 					{
 						int newLeaderUID = message.getEdge().getI();
 						messageBuffer.remove(message);
-						
+
 						Edge leaderEdge = new Edge(newLeaderUID, newLeaderUID, 0);
 						Msg leaderMsgDataHolder = new Msg(MessageType.NEWLEADER, leaderEdge, -1, -1, -1, -1);
 						sendMessageOnTreeEdges(thisNode, leaderMsgDataHolder, MessageType.NEWLEADER);
@@ -230,7 +230,7 @@ public class GHSProcessor implements Runnable{
 				}
 			}
 		}
-		
+
 	}
 
 	public void moveToNextPhase(Node thisNode2, int newLeaderUID) {
@@ -244,7 +244,8 @@ public class GHSProcessor implements Runnable{
 			thisNode2.setLeaderInd(false);
 		thisNode2.setPhaseNumber((thisNode2.getPhaseNumber()+1));
 		thisNode2.setMarked(false);
-		thisNode2.setStartMWOESearchFlag(true);
+		if(thisNode2.getUID()==newLeaderUID)
+			thisNode2.setStartMWOESearchFlag(true);
 		thisNode2.setBFSParentUID(-1);
 	}
 
@@ -391,6 +392,10 @@ public class GHSProcessor implements Runnable{
 				}
 			}
 
+		}
+		else
+		{
+			System.out.println("waiting for all responses to mwoe search messages");
 		}
 	}
 
