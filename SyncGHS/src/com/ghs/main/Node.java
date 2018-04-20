@@ -30,6 +30,7 @@ public class Node {
 	int BFSParentUID;
 	int numberOfNodes;
 	int numberOfDummyReplies;
+	boolean sendRejectMsgEnable;
 
 
 	/**
@@ -93,6 +94,7 @@ public class Node {
 		this.phaseNumber = 0;
 		this.startMWOESearchFlag = true;
 		this.BFSParentUID = -1;
+		this.sendRejectMsgEnable = true;
 	}
 
 	/**
@@ -357,6 +359,20 @@ public class Node {
 	 */
 	public synchronized void setNumberOfDummyReplies(int numberOfDummyReplies) {
 		this.numberOfDummyReplies = numberOfDummyReplies;
+	}
+
+	/**
+	 * @return the sendRejectMsgEnable
+	 */
+	public synchronized boolean isSendRejectMsgEnable() {
+		return sendRejectMsgEnable;
+	}
+
+	/**
+	 * @param sendRejectMsgEnable the sendRejectMsgEnable to set
+	 */
+	public synchronized void setSendRejectMsgEnable(boolean sendRejectMsgEnable) {
+		this.sendRejectMsgEnable = sendRejectMsgEnable;
 	}
 
 }

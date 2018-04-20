@@ -247,6 +247,8 @@ public class GHSProcessor implements Runnable{
 		if(thisNode2.getUID()==newLeaderUID)
 			thisNode2.setStartMWOESearchFlag(true);
 		thisNode2.setBFSParentUID(-1);
+		
+		thisNode.setSendRejectMsgEnable(true);
 	}
 
 	public void sendMessageOnTreeEdges(Node thisNode2, Msg message, MessageType merge) {
@@ -335,10 +337,15 @@ public class GHSProcessor implements Runnable{
 					 * send mwoe reject message
 					 */
 
-					Msg mwoeCandiate = new Msg(MessageType.MWOEREJECT, minEdge, thisNode.getBFSParentUID(), 
-							thisNode.getUID(), thisNode.getComponentId(), thisNode.getPhaseNumber());
+					if(thisNode.isSendRejectMsgEnable())
+					{
+						thisNode.setSendRejectMsgEnable(false);
+						Msg mwoeCandiate = new Msg(MessageType.MWOEREJECT, minEdge, thisNode.getBFSParentUID(), 
+								thisNode.getUID(), thisNode.getComponentId(), thisNode.getPhaseNumber());
 
-					sendMessage(mwoeCandiate, mwoeCandiate.getTargetUID());
+						sendMessage(mwoeCandiate, mwoeCandiate.getTargetUID());
+					}
+					
 				}
 			}
 			else
