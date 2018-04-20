@@ -249,6 +249,9 @@ public class GHSProcessor implements Runnable{
 		thisNode2.setBFSParentUID(-1);
 		
 		thisNode.setSendRejectMsgEnable(true);
+		printAllTreeEdges();
+		
+		//should we clear the MwoeCadidateReplyBuffer as well ???
 	}
 
 	public void sendMessageOnTreeEdges(Node thisNode2, Msg message, MessageType merge) {
