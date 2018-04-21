@@ -10,3 +10,11 @@ For more info on GHS algorithm please visit
 https://en.wikipedia.org/wiki/Distributed_minimum_spanning_tree
 
 Your comments and suggestions are welcome. Please mail me at nileshpharate94@gmail.com
+
+#How to run and compile?
+#use Maven to built a jar using below command
+mvn clean install
+
+#Use jar generated in target folder to run project
+java -jar <jar_name> Node <UID of the Node> <path and name to config file>
+
