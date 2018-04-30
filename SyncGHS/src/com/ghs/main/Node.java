@@ -31,7 +31,36 @@ public class Node {
 	int numberOfNodes;
 	int numberOfDummyReplies;
 	boolean sendRejectMsgEnable;
+	boolean terminationDetectFlag;
+	int terminationDelaycnt;
+	CopyOnWriteArrayList<Msg> terminateMsgBuffer;
 
+	/*
+	 * map of configuration file with UID as a key
+	 */
+	static HashMap<Integer, Node> configMap;
+
+	/*
+	 * Thread safe buffer of messages received till now
+	 */
+	CopyOnWriteArrayList<Msg> msgBuffer;
+	CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer;
+
+	Node(int id)
+	{
+		this.UID = id;
+		this.msgBuffer = new CopyOnWriteArrayList<>();
+		this.graphEdges = new CopyOnWriteArrayList<>();
+		this.treeEdges = new CopyOnWriteArrayList<>();
+		this.mwoeCadidateReplyBuffer = new CopyOnWriteArrayList<>();
+		this.terminateMsgBuffer = new CopyOnWriteArrayList<>();
+		this.leaderInd = true;
+		this.componentId = this.UID;
+		this.phaseNumber = 0;
+		this.startMWOESearchFlag = true;
+		this.BFSParentUID = -1;
+		this.sendRejectMsgEnable = true;
+	}
 
 	/**
 	 * @return the bFSParentUID
@@ -82,21 +111,6 @@ public class Node {
 		this.leaderInd = leaderInd;
 	}
 
-	Node(int id)
-	{
-		this.UID = id;
-		this.msgBuffer = new CopyOnWriteArrayList<>();
-		this.graphEdges = new CopyOnWriteArrayList<>();
-		this.treeEdges = new CopyOnWriteArrayList<>();
-		this.mwoeCadidateReplyBuffer = new CopyOnWriteArrayList<>();
-		this.leaderInd = true;
-		this.componentId = this.UID;
-		this.phaseNumber = 0;
-		this.startMWOESearchFlag = true;
-		this.BFSParentUID = -1;
-		this.sendRejectMsgEnable = true;
-	}
-
 	/**
 	 * @return the startMWOESearchFlag
 	 */
@@ -115,18 +129,9 @@ public class Node {
 		return stopClientMgr;
 	}
 
-	public void setStopClientMgr(boolean stopClientMgr) {
+	public synchronized void setStopClientMgr(boolean stopClientMgr) {
 		this.stopClientMgr = stopClientMgr;
 	}
-
-	//map of configuration file with UID as a key
-	static HashMap<Integer, Node> configMap;
-
-	/*
-	 * Thread safe buffer of messages received till now
-	 */
-	CopyOnWriteArrayList<Msg> msgBuffer;
-	CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer;
 
 	public int getUID() {
 		return UID;
@@ -219,6 +224,91 @@ public class Node {
 		this.phaseNumber = phaseNumber;
 	}
 
+	/**
+	 * @return the mwoeCadidateReplyBuffer
+	 */
+	public synchronized CopyOnWriteArrayList<Msg> getMwoeCadidateReplyBuffer() {
+		return mwoeCadidateReplyBuffer;
+	}
+
+	/**
+	 * @param mwoeCadidateReplyBuffer the mwoeCadidateReplyBuffer to set
+	 */
+	public synchronized void setMwoeCadidateReplyBuffer(CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer) {
+		this.mwoeCadidateReplyBuffer = mwoeCadidateReplyBuffer;
+	}
+
+	/**
+	 * @return the numberOfNodes
+	 */
+	public synchronized int getNumberOfNodes() {
+		return numberOfNodes;
+	}
+
+	/**
+	 * @param numberOfNodes the numberOfNodes to set
+	 */
+	public synchronized void setNumberOfNodes(int numberOfNodes) {
+		this.numberOfNodes = numberOfNodes;
+	}
+
+	/**
+	 * @return the numberOfDummyReplies
+	 */
+	public synchronized int getNumberOfDummyReplies() {
+		return numberOfDummyReplies;
+	}
+
+	/**
+	 * @param numberOfDummyReplies the numberOfDummyReplies to set
+	 */
+	public synchronized void setNumberOfDummyReplies(int numberOfDummyReplies) {
+		this.numberOfDummyReplies = numberOfDummyReplies;
+	}
+
+	/**
+	 * @return the sendRejectMsgEnable
+	 */
+	public synchronized boolean isSendRejectMsgEnable() {
+		return sendRejectMsgEnable;
+	}
+
+	/**
+	 * @param sendRejectMsgEnable the sendRejectMsgEnable to set
+	 */
+	public synchronized void setSendRejectMsgEnable(boolean sendRejectMsgEnable) {
+		this.sendRejectMsgEnable = sendRejectMsgEnable;
+	}
+
+	/**
+	 * @return the terminationDelaycnt
+	 */
+	public synchronized int getTerminationDelaycnt() {
+		return terminationDelaycnt;
+	}
+
+	/**
+	 * @param terminationDelaycnt the terminationDelaycnt to set
+	 */
+	public synchronized void setTerminationDelaycnt(int terminationDelaycnt) {
+		this.terminationDelaycnt = terminationDelaycnt;
+	}
+
+	/**
+	 * @return the terminateMsgBuffer
+	 */
+	public synchronized CopyOnWriteArrayList<Msg> getTerminateMsgBuffer() {
+		return terminateMsgBuffer;
+	}
+
+	/**
+	 * @param terminateMsgBuffer the terminateMsgBuffer to set
+	 */
+	public synchronized void setTerminateMsgBuffer(CopyOnWriteArrayList<Msg> terminateMsgBuffer) {
+		this.terminateMsgBuffer = terminateMsgBuffer;
+	}
+
+
 	public static void main(String[] args) throws IOException {
 
 		int UID = Integer.parseInt(args[0]);
@@ -307,7 +397,6 @@ public class Node {
 		try {
 			Thread.sleep(10000);
 		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 
@@ -317,62 +406,6 @@ public class Node {
 		GHSProcessor ghsProcessor = new GHSProcessor(thisNode);
 		Thread t1 = new Thread(ghsProcessor);
 		t1.start();
-	}
-
-	/**
-	 * @return the mwoeCadidateReplyBuffer
-	 */
-	public synchronized CopyOnWriteArrayList<Msg> getMwoeCadidateReplyBuffer() {
-		return mwoeCadidateReplyBuffer;
-	}
-
-	/**
-	 * @param mwoeCadidateReplyBuffer the mwoeCadidateReplyBuffer to set
-	 */
-	public synchronized void setMwoeCadidateReplyBuffer(CopyOnWriteArrayList<Msg> mwoeCadidateReplyBuffer) {
-		this.mwoeCadidateReplyBuffer = mwoeCadidateReplyBuffer;
-	}
-
-	/**
-	 * @return the numberOfNodes
-	 */
-	public synchronized int getNumberOfNodes() {
-		return numberOfNodes;
-	}
-
-	/**
-	 * @param numberOfNodes the numberOfNodes to set
-	 */
-	public synchronized void setNumberOfNodes(int numberOfNodes) {
-		this.numberOfNodes = numberOfNodes;
-	}
-
-	/**
-	 * @return the numberOfDummyReplies
-	 */
-	public synchronized int getNumberOfDummyReplies() {
-		return numberOfDummyReplies;
-	}
-
-	/**
-	 * @param numberOfDummyReplies the numberOfDummyReplies to set
-	 */
-	public synchronized void setNumberOfDummyReplies(int numberOfDummyReplies) {
-		this.numberOfDummyReplies = numberOfDummyReplies;
-	}
-
-	/**
-	 * @return the sendRejectMsgEnable
-	 */
-	public synchronized boolean isSendRejectMsgEnable() {
-		return sendRejectMsgEnable;
-	}
-
-	/**
-	 * @param sendRejectMsgEnable the sendRejectMsgEnable to set
-	 */
-	public synchronized void setSendRejectMsgEnable(boolean sendRejectMsgEnable) {
-		this.sendRejectMsgEnable = sendRejectMsgEnable;
 	}
 
 }

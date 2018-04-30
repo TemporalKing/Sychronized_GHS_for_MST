@@ -45,13 +45,18 @@ public class ClientManager implements Runnable{
 				if(msg.getSenderUID()==-1)
 					thisNode.setNumberOfDummyReplies((thisNode.getNumberOfDummyReplies()+1));
 
-				if(msg.messageType!=MessageType.DUMMY)
+				if(msg.messageType!=MessageType.DUMMY && msg.messageType != MessageType.TERMINATE)
 				{
 					if(msg.getMessageType() == MessageType.MWOEREJECT || msg.getMessageType() == MessageType.MWOECANDIDATE)
 						thisNode.getMwoeCadidateReplyBuffer().add(msg);
 					else
 						thisNode.getMsgBuffer().add(msg);	
 
+				}
+
+				if(msg.getMessageType() == MessageType.TERMINATE)
+				{
+					thisNode.getTerminateMsgBuffer().add(msg);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -62,7 +67,7 @@ public class ClientManager implements Runnable{
 		}
 
 		System.out.println("Stopping client Manager");
-		runCleanUp();
+		//runCleanUp();
 	}
 
 	public void runCleanUp() {
@@ -85,7 +90,6 @@ public class ClientManager implements Runnable{
 			out.writeObject(message);
 			socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
